@@ -1,3 +1,6 @@
+'''
+
+'''
 
 from bs4 import BeautifulSoup
 import sys
@@ -6,6 +9,7 @@ import os
 import pickle
 import Queue
 import hashlib
+import re
 
 '''
 Class to Query the Wikipedia Site
@@ -16,11 +20,16 @@ class WikipediaPageData:
 
     __WikipediaBasePage = u'https://en.wikipedia.org'
 
-    def __init__(self):
-        self.webpageAddress = None
+    def __init__(self, webpageAddress=None):
+        self.webpageAddress = webpageAddress
         self.webpageData = None
         self.textContent = None
         self.internalLinks = None
+
+
+    def __SetDefaultEncodingToUnicode__(self):
+        reload(sys)
+        sys.setdefaultencoding('utf8')
 
     '''
     Set Wikipedia Page address to fetch data from
@@ -68,12 +77,14 @@ class WikipediaPageData:
             if self.webpageData is None:
                 return (False, 'No Webpage Content Found')
 
-            self.textContent = []
+            self.textContent = u''
             resultTextSet = self.webpageData.find_all('p')
             for resultTextItem in resultTextSet:
-                self.textContent.append(resultTextItem.get_text())
+                self.textContent += u' ' + (resultTextItem.get_text())
 
-            return (True, self.textContent)
+            self.textContent = self.textContent.replace(u'\xa0', u' ')
+            self.textContent = re.sub(u'\[[\w\d\s]+\]', u'', self.textContent).strip()
+            return (True, self.textContent
 
         except:
             return (False, sys.exc_info()[1])
@@ -83,13 +94,13 @@ class WikipediaPageData:
     '''
     def GetAllWikiLinksFromWebpage(self):
         try:
-            if self.internalLinks != None:
+            if self.internalLinks is not None:
                 return self.internalLinks
 
-            if self.webpageData == None:
+            if self.webpageData is None:
                 self.ProcessWikipediaPage()
 
-            if self.webpageData == None:
+            if self.webpageData is None:
                 return (False, 'No Webpage Content Found')
 
             internalLinksList = []
@@ -100,10 +111,10 @@ class WikipediaPageData:
             self.internalLinks = set()
             for urlLink in internalLinksList:
                 if urlLink is not None and urlLink.startswith(u'/wiki/') and not urlLink.startswith(u'/wiki/File'):
-                    if "/#" in urlLink:
-                        self.internalLinks.add(WikipediaPageData.__WikipediaBasePage + urlLink[:urlLink.find("/#")])
-                    elif "/?" in urlLink:
-                        self.internalLinks.add(WikipediaPageData.__WikipediaBasePage + urlLink[:urlLink.find("/?")])
+                    if "#" in urlLink:
+                        self.internalLinks.add(WikipediaPageData.__WikipediaBasePage + urlLink[:urlLink.find("#")])
+                    elif "?" in urlLink:
+                        self.internalLinks.add(WikipediaPageData.__WikipediaBasePage + urlLink[:urlLink.find("?")])
                     else:
                         self.internalLinks.add(WikipediaPageData.__WikipediaBasePage + urlLink)
 
